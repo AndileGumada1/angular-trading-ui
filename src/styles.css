@@ -91,12 +91,18 @@ h3 {
 }
 
 .muted,
-.empty-state {
+.empty-state,
+.helper-text {
   color: var(--muted);
 }
 
 .muted {
   margin: 6px 0 0;
+  font-size: 0.86rem;
+}
+
+.helper-text {
+  margin: 12px 0 0;
   font-size: 0.86rem;
 }
 

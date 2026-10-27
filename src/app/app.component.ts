@@ -1,7 +1,13 @@
 import { HttpErrorResponse } from "@angular/common/http";
-import { CurrencyPipe, DatePipe, DecimalPipe, PercentPipe } from "@angular/common";
+import {
+  CurrencyPipe,
+  DatePipe,
+  DecimalPipe,
+  PercentPipe,
+} from "@angular/common";
 import { ChangeDetectorRef, Component, inject, ViewChild } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import { switchMap } from "rxjs";
 import { DashboardComponent } from "./features/dashboard/dashboard.component";
 import { AuthService } from "./core/services/auth.service";
 import { TradingService } from "./core/services/trading.service";
@@ -19,6 +25,7 @@ import {
 } from "./core/models/trading.models";
 
 type View = "overview" | "market" | "trades" | "backtesting" | "news";
+const BACKTEST_CANDLE_COUNT = 500;
 
 @Component({
   selector: "app-root",
@@ -102,7 +109,11 @@ type View = "overview" | "market" | "trades" | "backtesting" | "news";
             <form class="inline-form" (ngSubmit)="loadMarketData()">
               <label>
                 Instrument
-                <input name="instrument" [(ngModel)]="instrument" required placeholder="e.g. BTC-USD" />
+                <select name="instrument" [(ngModel)]="instrument" required>
+                  @for (option of instruments; track option.symbol) {
+                    <option [value]="option.symbol">{{ option.label }} ({{ option.symbol }})</option>
+                  }
+                </select>
               </label>
               <button class="button button-primary" type="submit" [disabled]="marketLoading">
                 {{ marketLoading ? "Loading…" : "Load data" }}
@@ -207,12 +218,20 @@ type View = "overview" | "market" | "trades" | "backtesting" | "news";
           <section class="page-heading"><div><p class="eyebrow">SIMULATION</p><h2>Backtesting</h2></div></section>
           <section class="panel">
             <form class="inline-form" (ngSubmit)="runBacktest()">
-              <label>Instrument<input name="backtestInstrument" [(ngModel)]="instrument" required /></label>
+              <label>
+                Instrument
+                <select name="backtestInstrument" [(ngModel)]="instrument" required>
+                  @for (option of instruments; track option.symbol) {
+                    <option [value]="option.symbol">{{ option.label }} ({{ option.symbol }})</option>
+                  }
+                </select>
+              </label>
               <label>Initial capital (optional)<input name="initialCapital" type="number" min="1" [(ngModel)]="initialCapital" /></label>
               <button class="button button-primary" type="submit" [disabled]="backtestLoading">
-                {{ backtestLoading ? "Running…" : "Run backtest" }}
+                {{ backtestLoading ? "Loading history and running…" : "Run backtest" }}
               </button>
             </form>
+            <p class="helper-text">Syncs 500 recent one-minute candles before simulating stored history. Volatility Index strategies require at least 201 candles.</p>
             @if (backtestError) { <p class="error" role="alert">{{ backtestError }}</p> }
           </section>
           @if (backtest; as result) {
@@ -321,7 +340,16 @@ export class AppComponent {
   password = "";
 
   view: View = "overview";
-  instrument = "BTC-USD";
+  readonly instruments = [
+    { label: "Gold", symbol: "frxXAUUSD" },
+    { label: "Step Index", symbol: "stPRNG" },
+    { label: "Volatility 10 Index", symbol: "R_10" },
+    { label: "Volatility 25 Index", symbol: "R_25" },
+    { label: "Volatility 50 Index", symbol: "R_50" },
+    { label: "Volatility 75 Index", symbol: "R_75" },
+    { label: "Volatility 75 (1s)", symbol: "1HZ75V" },
+  ];
+  instrument = "frxXAUUSD";
   initialCapital: number | null = null;
   headline = "";
   goldEvent: GoldNewsEvent = "NFP";
@@ -521,18 +549,21 @@ export class AppComponent {
     this.backtestLoading = true;
     this.backtestError = "";
     this.backtest = null;
-    this.trading.runBacktest(request).subscribe({
-      next: (result) => {
-        this.backtest = result;
-        this.backtestLoading = false;
-        this.changeDetector.markForCheck();
-      },
-      error: (error: unknown) => {
-        this.backtestError = this.errorMessage(error);
-        this.backtestLoading = false;
-        this.changeDetector.markForCheck();
-      },
-    });
+    this.trading
+      .syncCandles(instrument, BACKTEST_CANDLE_COUNT)
+      .pipe(switchMap(() => this.trading.runBacktest(request)))
+      .subscribe({
+        next: (result) => {
+          this.backtest = result;
+          this.backtestLoading = false;
+          this.changeDetector.markForCheck();
+        },
+        error: (error: unknown) => {
+          this.backtestError = this.errorMessage(error);
+          this.backtestLoading = false;
+          this.changeDetector.markForCheck();
+        },
+      });
   }
 
   analyzeNews(): void {

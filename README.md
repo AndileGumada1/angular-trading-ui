@@ -31,11 +31,20 @@ strategy evaluation, backtesting, headline sentiment, and NFP/CPI gold news sign
 Strategy evaluation can execute a trade if the backend approves it, so it is
 an explicit user action.
 
+Backtesting synchronizes up to 500 recent one-minute candles for the selected
+instrument before submitting the simulation. Volatility Index strategies need
+at least 201 candles; sync failures and insufficient-history responses are
+shown in the backtesting view.
+
 The backend currently documents REST endpoints only. Market data and account
-views refresh on request; no WebSocket stream is configured. For deployments,
-serve the frontend behind a same-origin reverse proxy that forwards `/api` to
-the backend, or update `src/environments/environment.ts` and configure backend
-CORS for the deployed frontend origin.
+views refresh on request; no WebSocket stream is configured. The development
+build uses the `/api` proxy; production builds use
+`src/environments/environment.production.ts`. For the current single-computer
+setup, this points at `http://localhost:8070/api`, and the backend CORS allowlist
+must include the exact Vercel origin. This only works in a browser on the same
+computer running the backend. A multi-user deployment needs a reachable HTTPS
+backend and a suitable user-authentication flow; do not put shared API
+credentials in the frontend bundle.
 
 ## End-to-end tests
 
