@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.angular/
+e2e-java/target/
+e2e-java/e2e-live.properties
