@@ -342,7 +342,7 @@ export class AppComponent {
   view: View = "overview";
   readonly instruments = [
     { label: "Gold", symbol: "frxXAUUSD" },
-    { label: "Step Index", symbol: "stPRNG" },
+    { label: "Step Index", symbol: "stpRNG" },
     { label: "Volatility 10 Index", symbol: "R_10" },
     { label: "Volatility 25 Index", symbol: "R_25" },
     { label: "Volatility 50 Index", symbol: "R_50" },
